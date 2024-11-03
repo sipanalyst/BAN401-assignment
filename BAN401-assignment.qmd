@@ -39,7 +39,7 @@ vehicle_type_cost_list
 
 The list called vehicle_type_cost_list contains two elements ET (electric truck) and DT (diesel truck). These two elements do contain the costs of energy/fuel, price per ferry ride and toll cost per station.
 
-The main challenge of this task is to apply mathematical operations while working with a data frame and a list at the same time. Therefore, we have to multiply the distance with the energy/fuel cost per km, the number of ferries with the price per ferry and the number of toll stations with the toll cost per station for each truck type and sum these multiplications up. Practically, this means that we have to multiply the first row of routes_df with the first element of vehicle_type_cost_list. This creates an element-by-element multiplication. The last step then is to create compute the sum of these multiplications.
+The main challenge of this task is to apply mathematical operations while working with a data frame and a list at the same time. Therefore, we have to multiply the distance with the energy/fuel cost per km, the number of ferries with the price per ferry and the number of toll stations with the toll cost per station for each truck type and sum these multiplications up. Practically, this means that we have to multiply the first row of routes_df with the first element of vehicle_type_cost_list and so on. This creates an element-by-element multiplication. The last step then is to compute the sum of these multiplications.
 
 The idea of our problem solution is to run a for-loop which iterates over the rows in routes_df and multiplies these elements with the given values in vehicle_type_cost_list.
 
@@ -66,9 +66,9 @@ et_total
 dt_total
 ```
 
-As we can see, the results are then stored in the initially defined vectors et_total and dt_total element by element.
+As we suggested, the results are now stored in the initially defined vectors et_total and dt_total element by element.
 
-These vectors are now available in the global environment. Hence, we append them to the initial routes_df by storing et_total and dt_total as new columns.
+These vectors are now available in the global environment. Hence, we append them to the initial data frame routes_df by storing et_total and dt_total as new columns.
 
 ```{r appending et_total}
 routes_df$et_total <- et_total
@@ -80,15 +80,76 @@ routes_df$dt_total <- dt_total
 
 As we can see, transporting the goods by diesel trucks is consistently more expensive than by electric trucks.
 
-```{r}
+```{r showing data frame routes_df}
 routes_df
 ```
 
 These findings can now be highlighted by calculating the savings by switching from diesel trucks to electric trucks. Hence, we create a new column in routes_df named savings by the total costs of transportation with diesel trucks minus the transportation costs by electric trucks.
 
-```{r}
+```{r expand data frame routes_df by column savings}
 routes_df$savings <- routes_df$dt_total - routes_df$et_total
 routes_df
 ```
 
 # Problem 5
+
+Problem 5 deals with an allocation problem. In particular, a retailer faces the issue that he/she needs to procure goods worth exactly \$200 to replenish their stock for the next business cycle. Therefore, he has a set of given items:
+
+```{r initializing data frame items_df}
+items_df <-
+  tibble::tibble( 
+  items = c("small item", "medium item", "large item", "extra-large item",
+           "luxury item", "premium item", "bulk pack"),
+  costs = c(1,2,5,10,20,50,100)
+  )
+items_df
+```
+
+We defined the set of given items as items_df which calls the tibble()-function of the R-package tibble in order to create a modern data frame. items_df possesses two columns. The first column defines the given items and the second contains the corresponding costs in USD.
+
+The main task regarding establishing the R-code is to create a function that returns all possible purchase combinations of the given items. That means we have to explore multiple combination paths under the restriction of reusable items. A very efficient approach to solve this problem is initializing a recursive function that calls itself. This approach enables us to create a dynamic program to find all possible purchase combinations.
+
+```{r problem solution deviation}
+purchase_combinations <- function(target, costs, index) {
+
+  if (target == 0) 
+    return(1)       
+
+  if (target < 0 | index < 1) 
+    return(0)
+  
+  include_current_item <- purchase_combinations(target - costs[index], 
+                                                costs, 
+                                                index)
+  exclude_current_item <- purchase_combinations(target, 
+                                                costs, 
+                                                index - 1)
+  
+  combinations <- as.numeric(
+    include_current_item + exclude_current_item)
+
+  return(combinations)
+}
+```
+
+The function is defined with three arguments. The first argument initializes the target spend amount. The second argument includes the cost structure of the given items and the third argument provides access to the indices of the items. We have to include the index of items in order to realize all possible purchase combinations. A given item possibly can be reused to accomplish the target spend amount. Hence, the index is highly important.
+
+The problem solution deviation is defined with the general structure of recursive functions.  Therefore, we want to go through the function chunk wise. 
+
+The first chunk determines a binary system where we work with 0 and 1 according to the enumeration of possible purchase combinations. If the target is equal to zero then 1 will be returned. If the target is less than zero or there are no more items left then 0 will be returned. This code chunk satisfies the conditional manner of the recursive function.  
+
+To provide the explanation of the second code chunk, we will start with an initial example. Let us assume that the target is equal to 200, the costs and the indeces are given through the data frame items_df. Since the target initially is greater than zero and the starting item does have the index seven, there will be the 0 returned because we did not find a representative purchase combination since the purchase volume is not used up. This means that we can call the purchase_combinations()-function itself in order to deduct the given item costs. Here, the costs of the seventh item will deduct the target spending volume. This process will iterate until the target spending volume is reached. Hence, a purchase combination path is found.
+
+This expresses that if there is a positive residual target value, then the costs of the given item will be recognized and deduct the target volume. If the value is overstretched then the item will be excluded in the purchase path. All possible combinations of item allocation will be summed up and returned in the last instance.
+
+```{r problem solution}
+total_combination_number <- 
+  purchase_combinations(target = 200,
+                        costs = items_df$costs,
+                        index = length(items_df$costs))
+
+cat("How many item combinations add up to $200?", "\n", "-> There are", 
+    total_combination_number, "unique item purchase combinations.")
+```
+
+In order to show the number of all possible combinations, we have to provide initial values to the arguments. Here, we declared the target as \$200, the costs as the predefined items costs of the data frame items_df and the index argument due to the length of items_df. As we can see, there are 73681 possible purchase combinations that reach the target spending value of \$200.
